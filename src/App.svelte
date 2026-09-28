@@ -2,10 +2,8 @@
   import Bluetooth from '@lucide/svelte/icons/bluetooth';
   import BluetoothConnected from '@lucide/svelte/icons/bluetooth-connected';
   import BluetoothOff from '@lucide/svelte/icons/bluetooth-off';
-  import BatteryFull from '@lucide/svelte/icons/battery-full';
-  import BatteryMedium from '@lucide/svelte/icons/battery-medium';
-  import BatteryLow from '@lucide/svelte/icons/battery-low';
-  import BatteryWarning from '@lucide/svelte/icons/battery-warning';
+  import CircleAlert from '@lucide/svelte/icons/circle-alert';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import Menu from '@lucide/svelte/icons/menu';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import X from '@lucide/svelte/icons/x';
@@ -32,6 +30,27 @@
 
   let menuOpen = $state(false);
   const battery = $derived(app.reading?.battery.percent ?? null);
+  const connLabel = $derived(
+    app.connected
+      ? `Connected${app.deviceName ? ` to ${app.deviceName}` : ''}${battery !== null ? `, battery ${battery}%` : ''}`
+      : app.busy
+        ? 'Connecting'
+        : app.support.ok
+          ? 'Not connected. Connect a Light Master'
+          : 'Web Bluetooth is not available in this browser',
+  );
+
+  // An error belongs to the page that raised it: leaving that page dismisses it.
+  // Photometry and Flicker count as one page (the Measure screen).
+  const pageOf = (name: string) => (name === 'photometry' || name === 'flicker' ? 'measure' : name);
+  let lastPage = pageOf(router.route.name);
+  $effect(() => {
+    const page = pageOf(route.name);
+    if (page !== lastPage) {
+      lastPage = page;
+      app.error = null;
+    }
+  });
 
   function go(path: string) {
     menuOpen = false;
@@ -54,18 +73,27 @@
     {/if}
     <h1>{title}</h1>
     <span class="spacer"></span>
-    {#if app.connected && battery !== null}
-      <span class="chip" title="Battery">
-        {#if battery > 70}<BatteryFull size={17} />{:else if battery > 35}<BatteryMedium size={17} />{:else if battery > 15}<BatteryLow size={17} />{:else}<BatteryWarning size={17} />{/if}
-        {battery}%
-      </span>
-    {/if}
-    <button class="chip conn" class:on={app.connected} onclick={() => go('guide')} title={app.message || 'Connection'}>
-      {#if app.connected}<BluetoothConnected size={17} /><span class="label">Connected</span>
+    {#snippet status()}
+      {#if app.connected}
+        <BluetoothConnected size={17} /><span class="label wide">Connected</span>
+        {#if battery !== null}<span class="batt" class:low={battery <= 15}>{battery}%</span>{/if}
       {:else if app.busy}<span class="spinner"></span><span class="label">Connecting</span>
-      {:else if app.support.ok}<Bluetooth size={17} /><span class="label">No connection</span>
-      {:else}<BluetoothOff size={17} /><span class="label">Unsupported</span>{/if}
-    </button>
+      {:else if app.support.ok}<Bluetooth size={17} /><span class="label">Connect</span>
+      {:else}<BluetoothOff size={17} /><span class="label">No Bluetooth</span>{/if}
+    {/snippet}
+    {#if route.name === 'guide'}
+      <!-- The guide is where you connect: the chip only reports state there. -->
+      <span class="chip conn" class:on={app.connected} role="status" aria-label={connLabel} title={app.message || connLabel}>{@render status()}</span>
+    {:else}
+      <button
+        class="chip conn"
+        class:on={app.connected}
+        class:cta={!app.connected && !app.busy && app.support.ok}
+        onclick={() => go('guide')}
+        aria-label={connLabel}
+        title={app.message || connLabel}>{@render status()}</button
+      >
+    {/if}
     <button class="icon-btn" aria-label="Menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}><Menu size={20} /></button>
   </div>
   {#if menuOpen}
@@ -84,18 +112,22 @@
 <main>
   {#if !app.support.ok && isHome}
     <div class="banner warn no-print">
-      {app.support.reason === 'insecure' ? 'Web Bluetooth needs an https page.' : 'This browser has no Web Bluetooth.'} Use Chrome or Edge on desktop or
-      Android; on iPhone/iPad use a Web Bluetooth browser such as Bluefy. Saved reports still work.
+      <TriangleAlert size={18} />
+      <span>
+        {app.support.reason === 'insecure' ? 'Web Bluetooth needs an https page.' : 'This browser has no Web Bluetooth.'} Use Chrome or Edge on desktop or
+        Android; on iPhone/iPad use a Web Bluetooth browser such as Bluefy. Saved reports still work. <a href="#/guide">How to connect</a>
+      </span>
     </div>
   {/if}
   {#if app.error}
     <div class="banner error no-print" role="alert">
+      <CircleAlert size={18} />
       <span>{app.error}</span>
       <button class="icon-btn" aria-label="Dismiss" onclick={() => (app.error = null)}><X size={16} /></button>
     </div>
   {/if}
   {#if app.state === 'reconnecting' || app.state === 'warning'}
-    <div class="banner warn no-print">{app.message}</div>
+    <div class="banner warn no-print"><TriangleAlert size={18} /><span>{app.message}</span></div>
   {/if}
 
   {#if route.name === 'photometry' || route.name === 'flicker'}
@@ -116,7 +148,7 @@
 </main>
 
 {#if app.toast}
-  <div class="toast" role="status">{app.toast}</div>
+  <div class="toast" class:raised={isHome} role="status">{app.toast}</div>
 {/if}
 
 <style>
@@ -157,22 +189,47 @@
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    min-height: 34px;
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-2);
-    padding: 5px 9px;
+    padding: 5px 11px 5px 9px;
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--surface);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
-  .conn {
+  button.conn {
     cursor: pointer;
   }
   .conn.on {
-    color: var(--good);
-    border-color: color-mix(in srgb, var(--good) 40%, var(--border));
+    color: var(--good-text);
+    border-color: color-mix(in srgb, var(--good) 45%, var(--border));
+  }
+  .conn.cta {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  }
+  .conn.cta :global(svg) {
+    color: var(--accent-strong);
+  }
+  .batt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-2);
+  }
+  .batt::before {
+    content: '';
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    margin-right: 1px;
+  }
+  .batt.low {
+    color: var(--warn-text);
   }
   .menu {
     position: absolute;
@@ -191,6 +248,9 @@
   .menu a,
   .menu button {
     text-align: left;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     padding: 10px 12px;
     border-radius: 8px;
     color: var(--text);
@@ -219,27 +279,46 @@
   }
   .banner {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: flex-start;
     gap: 10px;
     border-radius: 12px;
     padding: 10px 14px;
     margin-bottom: 12px;
     font-size: 0.9rem;
+    color: var(--text);
     border: 1px solid var(--border);
     background: var(--surface);
   }
+  .banner > span {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .banner > :global(svg) {
+    flex: none;
+    margin-top: 1px;
+  }
+  .banner .icon-btn {
+    margin: -11px -12px -11px 0;
+  }
   .banner.error {
     border-color: color-mix(in srgb, var(--bad) 45%, var(--border));
+    background: color-mix(in srgb, var(--bad) 7%, var(--surface));
+  }
+  .banner.error > :global(svg) {
     color: var(--bad);
   }
   .banner.warn {
     border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+    background: color-mix(in srgb, var(--warn) 9%, var(--surface));
+  }
+  .banner.warn > :global(svg) {
+    color: var(--warn-text);
   }
   .toast {
     position: fixed;
     left: 50%;
-    bottom: 90px;
+    bottom: calc(24px + env(safe-area-inset-bottom));
     transform: translateX(-50%);
     background: var(--text);
     color: var(--bg);
@@ -250,8 +329,12 @@
     z-index: 50;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   }
+  /* On Measure, sit above the docked action bar. */
+  .toast.raised {
+    bottom: calc(88px + env(safe-area-inset-bottom));
+  }
   @media (max-width: 480px) {
-    .chip .label {
+    .chip .label.wide {
       display: none;
     }
   }

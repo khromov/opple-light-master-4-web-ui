@@ -1,5 +1,7 @@
 <script lang="ts">
   import Info from '@lucide/svelte/icons/info';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import type { Reading } from '../ble/meter';
   import { formatPhotometry } from '../format';
   import LuxGauge from './LuxGauge.svelte';
@@ -8,7 +10,7 @@
   import ChannelChart from './ChannelChart.svelte';
   import Modal from './Modal.svelte';
 
-  let { reading, live = false }: { reading: Reading | null; live?: boolean } = $props();
+  let { reading, live = false, canStart = false }: { reading: Reading | null; live?: boolean; /** show the "press Start" hint (Measure screen with Web Bluetooth) */ canStart?: boolean } = $props();
 
   const view = $derived(formatPhotometry(reading));
 
@@ -54,53 +56,68 @@
   ]);
 
   let showExtras = $state(false);
+  let cieZoom = $state(false);
+  const extrasId = `extras-${Math.random().toString(36).slice(2)}`;
+  const isNone = (v: string) => v === '---' || v === '--';
 </script>
 
 <section class="card gauge-card">
+  {#if live}<span class="live-pill no-print"><i></i>Live</span>{/if}
   <LuxGauge lux={reading?.lux ?? null} cct={view.cct !== '---' ? (reading?.cct ?? null) : null} luxText={view.lux} cctText={view.cct} {live} />
-  {#if reading && !view.valid}
+  {#if !reading}
+    {#if live || canStart}
+      <p class="hint no-print">{live ? 'Waiting for the first reading…' : 'Face the sensor towards the light, then press Start.'}</p>
+    {/if}
+  {:else if !view.valid}
     <p class="range">
-      {reading.lux >= 50000
-        ? 'Maximum value exceeded: increase the distance between the Light Master and the luminaire.'
-        : 'Too dark to measure: the meter needs at least 10 lx.'}
+      <TriangleAlert size={16} />
+      <span>
+        {reading.lux >= 50000
+          ? 'Maximum value exceeded: increase the distance between the Light Master and the luminaire.'
+          : 'Too dark to measure: the meter needs at least 10 lx.'}
+      </span>
     </p>
   {/if}
   <dl class="coords">
     {#each coords as c (c.k)}
-      <div><dt>{c.k}</dt><dd class="num">{c.v}</dd></div>
+      <div><dt>{c.k}</dt><dd class="num" class:placeholder={isNone(c.v)}>{c.v}</dd></div>
     {/each}
   </dl>
 </section>
 
-<section class="metrics">
+<section class="card metrics">
   {#each metrics as m (m.key)}
-    <div class="card metric">
-      <div class="mlabel">
-        {m.label}
-        <button class="icon-btn help" aria-label="What is {m.label}?" onclick={() => openHelp(m.key)}><Info size={15} /></button>
-      </div>
-      <div class="mvalue">{m.value}</div>
+    <div class="metric">
+      <div class="mlabel">{m.label}</div>
+      <button class="icon-btn help" aria-label="What is {m.label}?" onclick={() => openHelp(m.key)}><Info size={16} /></button>
+      <div class="mvalue num" class:placeholder={isNone(m.value)}>{m.value}</div>
     </div>
   {/each}
 </section>
 
 <section class="card">
   <h3 class="card-title">Colour rendering R1–R14</h3>
-  <RChart values={view.rBars} labels={view.rs} />
+  <RChart values={view.rBars} labels={view.rs} empty={!view.valid} />
 </section>
 
 <section class="card">
-  <h3 class="card-title">CIE 1931 chromaticity</h3>
-  <Chromaticity x={view.valid ? (reading?.x ?? null) : null} y={view.valid ? (reading?.y ?? null) : null} cct={view.cct} />
+  <h3 class="card-title">
+    CIE 1931 chromaticity
+    <button class="btn small zoom no-print" onclick={() => (cieZoom = !cieZoom)}>{cieZoom ? 'Full diagram' : 'Zoom to white'}</button>
+  </h3>
+  <Chromaticity x={view.valid ? (reading?.x ?? null) : null} y={view.valid ? (reading?.y ?? null) : null} cct={view.cct} bind:zoom={cieZoom} />
 </section>
 
 {#if reading}
   <section class="card extras">
-    <button class="extras-toggle" aria-expanded={showExtras} onclick={() => (showExtras = !showExtras)}>
-      <span class="card-title" style="margin:0">More readings</span>
-      <span class="muted small">{showExtras ? 'Hide' : 'Show'} · not in the Opple app</span>
+    <button class="disclosure" aria-expanded={showExtras} aria-controls={extrasId} onclick={() => (showExtras = !showExtras)}>
+      <span class="card-title">More readings</span>
+      <span class="badge-extra" title="Not in the Opple app">Extra</span>
+      <ChevronDown class="chev" size={20} />
     </button>
     {#if showExtras}
+      <div id={extrasId}>
+      <p class="muted small note">Extra readings from the same measurement. The Opple app doesn't show these.</p>
       <h4>Sensor channels</h4>
       <p class="muted small">
         Calibrated counts of the eight spectral channels, relative to the strongest. The channels differ in sensitivity, so this is a fingerprint of
@@ -124,12 +141,19 @@
           ><em>NIR?</em>{reading.aux ?? '---'}</span
         >
       </div>
+      </div>
     {/if}
   </section>
 {/if}
 
-<Modal bind:open={helpOpen} title={help ? HELP[help].title : ''}>
-  {#if help}<p>{HELP[help].body}</p>{/if}
+<Modal bind:open={helpOpen} title={help ? HELP[help].title : ''} variant="sheet">
+  {#if help}
+    {@const current = metrics.find((m) => m.key === help)?.value}
+    {#if reading && current && !isNone(current)}
+      <div class="help-value num">{current}<small>this reading</small></div>
+    {/if}
+    <p>{HELP[help].body}</p>
+  {/if}
 </Modal>
 
 <style>
@@ -137,13 +161,61 @@
     margin-top: 12px;
   }
   .gauge-card {
+    position: relative;
     padding-top: 8px;
   }
-  .range {
+  .live-pill {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    background: var(--accent-bg);
+    padding: 4px 9px 4px 8px;
+    border-radius: 999px;
+  }
+  .live-pill i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-pill i {
+      animation: none;
+    }
+  }
+  .hint {
     text-align: center;
-    color: var(--warn);
+    color: var(--text-2);
+    font-size: 0.85rem;
+    max-width: 32ch;
+    margin: 8px auto 14px;
+  }
+  .range {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--text);
     font-size: 0.88rem;
-    margin: 0 0 8px;
+    background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border));
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin: 12px 0;
+  }
+  .range :global(svg) {
+    flex: none;
+    margin-top: 2px;
+    color: var(--warn-text);
   }
   .coords {
     display: grid;
@@ -166,42 +238,64 @@
     font-weight: 600;
     font-size: 0.95rem;
   }
+  /* CRI (Ra), CS, EML, R9: one card, cells split by hairlines (1×4, 2×2 on phones). */
   .metrics {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-top: 12px;
+    padding: 0;
+    overflow: hidden;
   }
   .metric {
-    padding: 10px 12px 12px;
+    position: relative;
+    padding: 12px 14px 14px;
+  }
+  .metric + .metric {
+    border-left: 1px solid var(--border);
   }
   .mlabel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    min-height: 20px;
+    padding-right: 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .help {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 40px;
+    height: 40px;
+    color: var(--text-3);
+  }
+  .mvalue {
+    font-size: 1.4rem;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+  .mvalue.placeholder {
+    font-weight: 500;
+  }
+  .help-value {
+    font-size: 2rem;
+    font-weight: 650;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+  .help-value small {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-3);
+    margin-left: 6px;
   }
-  .help {
-    width: 26px;
-    height: 26px;
-    margin: -4px -6px -4px 0;
+  .zoom {
+    min-height: 32px;
+    margin: -6px 0;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
   }
-  .mvalue {
-    font-size: 1.55rem;
-    font-weight: 650;
-    margin-top: 2px;
-  }
-  .extras-toggle {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
+  .extras .note {
+    margin: 12px 0 0;
   }
   .small {
     font-size: 0.82rem;
@@ -241,6 +335,18 @@
   @media (max-width: 560px) {
     .metrics {
       grid-template-columns: repeat(2, 1fr);
+    }
+    .metric {
+      padding: 9px 14px 10px;
+    }
+    .metric + .metric {
+      border-left: 0;
+    }
+    .metric:nth-child(2n) {
+      border-left: 1px solid var(--border);
+    }
+    .metric:nth-child(-n + 2) {
+      border-bottom: 1px solid var(--border);
     }
     .coords dd {
       font-size: 0.82rem;

@@ -2,11 +2,10 @@
   import { PLANCKIAN_LOCUS, PLANCK_TICKS, SPECTRAL_LOCUS, paintGamut, type XY } from '../science/cie-diagram';
   import { linear, niceTicks } from '../charts/scale';
 
-  let { x, y, cct }: { x: number | null; y: number | null; cct: string } = $props();
-  let zoom = $state(false);
+  let { x, y, cct, zoom = $bindable(false) }: { x: number | null; y: number | null; cct: string; /** zoomed to the white region (toggle lives in the card title) */ zoom?: boolean } = $props();
 
   let cw = $state(0);
-  const M = { l: 34, r: 10, t: 10, b: 28 };
+  const M = { l: 34, r: 10, t: 18, b: 28 };
   const view = $derived(zoom ? { x: [0.25, 0.55] as [number, number], y: [0.25, 0.47] as [number, number] } : { x: [0, 0.8] as [number, number], y: [0, 0.9] as [number, number] });
   // Equal scale on both axes so the diagram isn't distorted.
   const W = $derived(Math.max(260, Math.min(cw || 340, 480)));
@@ -57,7 +56,9 @@
       {#each PLANCK_TICKS as tk (tk.k)}
         <circle cx={sx(tk.xy[0])} cy={sy(tk.xy[1])} r="2" class="planck-dot" />
         {#if zoom || tk.k === 2000 || tk.k === 4000 || tk.k === 10000}
-          <text x={sx(tk.xy[0]) + 3} y={sy(tk.xy[1]) + 13} class="planck-label">{tk.k}K</text>
+          <!-- Warm end: label to the lower left, away from the 600 nm label and the locus edge. -->
+          {@const warm = tk.k <= 2500}
+          <text x={sx(tk.xy[0]) + (warm ? -5 : 3)} y={sy(tk.xy[1]) + (warm ? 15 : 13)} text-anchor={warm ? 'end' : 'start'} class="planck-label">{tk.k}K</text>
         {/if}
       {/each}
       {#if !zoom}
@@ -83,14 +84,13 @@
     <line class="axisline" x1={M.l} x2={W - M.r} y1={H - M.b} y2={H - M.b} />
     <line class="axisline" x1={M.l} x2={M.l} y1={M.t} y2={H - M.b} />
     <text x={W - M.r} y={H - 2} text-anchor="end" class="axis-name">x</text>
-    <text x={M.l - 24} y={M.t + 8} class="axis-name">y</text>
+    <text x={M.l + 4} y={M.t - 5} class="axis-name">y</text>
   </svg>
   {#if hover && hasPoint}
     <div class="tooltip" style:left="{(sx(x!) / W) * 100}%" style:top="{(sy(y!) / H) * 100}%">
       <strong>x {x!.toFixed(4)} · y {y!.toFixed(4)}</strong><br /><span>CCT {cct} K</span>
     </div>
   {/if}
-  <button class="btn small zoom no-print" onclick={() => (zoom = !zoom)}>{zoom ? 'Full diagram' : 'Zoom to white'}</button>
 </div>
 </div>
 
@@ -126,11 +126,5 @@
     fill: #111318;
     stroke: #fff;
     stroke-width: 2;
-  }
-  .zoom {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    background: color-mix(in srgb, var(--surface) 85%, transparent);
   }
 </style>

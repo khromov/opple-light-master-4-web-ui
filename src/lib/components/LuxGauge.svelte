@@ -46,11 +46,11 @@
     {/each}
   </svg>
   <div class="center">
-    <div class="unit">LUX (lx)</div>
-    <div class="value">{luxText}</div>
+    <div class="label">Illuminance</div>
+    <div class="value" class:placeholder={luxText === '---'}>{luxText}{#if luxText !== '---'}<span class="u">lx</span>{/if}</div>
     <div class="cct">
       {#if swatch}<span class="dot" style:background={swatch}></span>{/if}
-      <span class="num">{cctText}</span> <span class="k">K</span>
+      <span class="num" class:placeholder={cctText === '---'}>{cctText}</span> <span class="k">K</span>
     </div>
   </div>
 </div>
@@ -79,6 +79,11 @@
     stroke-linecap: round;
     transition: d 0.35s ease-out;
   }
+  @media (prefers-reduced-motion: reduce) {
+    .fill {
+      transition: none;
+    }
+  }
   .tick {
     stroke: var(--axis);
     stroke-width: 1.5;
@@ -97,18 +102,33 @@
     padding-top: 22px;
     pointer-events: none;
   }
-  .unit {
-    font-size: 0.75rem;
+  .label {
+    font-size: 0.8rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--text-3);
+    letter-spacing: 0.02em;
+    color: var(--text-2);
   }
   .value {
+    display: flex;
+    align-items: baseline;
     font-size: 3.4rem;
     font-weight: 650;
     line-height: 1.05;
     color: var(--text);
     letter-spacing: -0.02em;
+    /* Updates every 480 ms while live: fixed-width digits keep it from jittering. */
+    font-variant-numeric: tabular-nums;
+  }
+  .value.placeholder {
+    color: var(--text-3);
+    font-weight: 500;
+  }
+  .u {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--text-3);
+    margin-left: 4px;
   }
   .cct {
     display: flex;
@@ -120,6 +140,10 @@
     color: var(--text);
   }
   .cct .k {
+    color: var(--text-3);
+    font-weight: 500;
+  }
+  .cct .placeholder {
     color: var(--text-3);
     font-weight: 500;
   }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Bluetooth from '@lucide/svelte/icons/bluetooth';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { app } from '../state.svelte';
   import { router } from '../router.svelte';
 
@@ -20,6 +21,14 @@
   }
 
   const unsupported = $derived(!app.support.ok);
+
+  // Tips stay out of the way until something goes wrong here. An error left over
+  // from another page (cleared on navigation) doesn't count.
+  let tipsOpen = $state(false);
+  const errorOnArrival = app.error;
+  $effect(() => {
+    if (app.error && app.error !== errorOnArrival) tipsOpen = true;
+  });
 </script>
 
 <section class="card">
@@ -39,10 +48,10 @@
       <li><strong>Keep it close</strong> to this device, then press Connect and pick <em>SigMesh</em> (that's how the Light Master 4 names itself).</li>
     </ol>
     <div class="row">
-      <button class="btn primary" onclick={() => connect()} disabled={working || app.busy}>
+      <button class="btn primary wide" class:busy={working || app.busy} onclick={() => connect()} disabled={working || app.busy}>
         {#if working || app.busy}<span class="spinner"></span> Connecting…{:else}<Bluetooth size={16} /> Connect{/if}
       </button>
-      <button class="btn" onclick={() => connect(true)} disabled={working || app.busy}>Not listed? Show all devices</button>
+      <button class="btn text wide" onclick={() => connect(true)} disabled={working || app.busy}>Not listed? Show all devices</button>
     </div>
   {:else}
     <p class="big">Check if the LED indicator is constantly on.</p>
@@ -55,8 +64,11 @@
 </section>
 
 <section class="card tips">
-  <h3 class="card-title">Trouble connecting?</h3>
-  <ul>
+  <button class="disclosure" aria-expanded={tipsOpen} aria-controls="guide-tips" onclick={() => (tipsOpen = !tipsOpen)}>
+    <span class="card-title">Trouble connecting?</span>
+    <ChevronDown class="chev" size={20} />
+  </button>
+  <ul id="guide-tips" hidden={!tipsOpen}>
     <li>The meter stops advertising while anything is connected to it. Quit the Opple app completely, and close other tabs using it.</li>
     <li>
       If a connection seems stuck, use <a href="#/diagnostics">Diagnostics → Force disconnect</a>. A link held by another browser tab or app can
@@ -72,11 +84,33 @@
     margin-bottom: 10px;
   }
   .steps {
-    padding-left: 20px;
-    margin: 0 0 16px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px;
+    counter-reset: step;
     display: grid;
-    gap: 10px;
+    gap: 14px;
     color: var(--text-2);
+  }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 38px;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: var(--accent-bg);
+    color: var(--text);
   }
   .steps strong {
     color: var(--text);
@@ -86,27 +120,33 @@
     flex-wrap: wrap;
     gap: 10px;
   }
+  .row .wide {
+    flex: 1 1 100%;
+  }
+  .row .primary {
+    min-height: 48px;
+  }
   .big {
     font-size: 1.1rem;
     font-weight: 600;
     margin: 0 0 4px;
   }
   .warn {
-    color: var(--warn);
+    color: var(--warn-text);
   }
   .tips {
     margin-top: 12px;
   }
   .tips ul {
-    margin: 0;
+    margin: 22px 0 0;
     padding-left: 18px;
     display: grid;
     gap: 8px;
     color: var(--text-2);
     font-size: 0.9rem;
   }
-  code {
-    font-size: 0.82rem;
-    word-break: break-all;
+  .tips ul[hidden] {
+    display: none;
   }
+
 </style>

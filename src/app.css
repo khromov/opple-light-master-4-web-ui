@@ -4,8 +4,8 @@
   --surface-2: #eef0f3;
   --border: #dde0e6;
   --text: #1b1e24;
-  --text-2: #5b6270;
-  --text-3: #8a91a0;
+  --text-2: #4a515e;
+  --text-3: #646b7a;
   --accent: #d98a00;
   --accent-strong: #b87400;
   --accent-bg: rgba(217, 138, 0, 0.12);
@@ -13,6 +13,12 @@
   --warn: #d98a00;
   --bad: #d63a3a;
   --info: #2f7fd6;
+  /* Text-safe versions of the warn/good hues (>= 4.5:1 on surface). */
+  --warn-text: #9a5b00;
+  --good-text: #157a43;
+  /* Raised control (segmented thumb) and the docked action bar. */
+  --surface-3: #ffffff;
+  --bar-bg: color-mix(in srgb, var(--bg) 86%, transparent);
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
   --radius: 14px;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -33,8 +39,8 @@
     --surface-2: #20242c;
     --border: #2b3039;
     --text: #eceef2;
-    --text-2: #a4abb8;
-    --text-3: #6f7685;
+    --text-2: #b4bac5;
+    --text-3: #8b93a3;
     --accent: #ffb020;
     --accent-strong: #ffc53d;
     --accent-bg: rgba(255, 176, 32, 0.14);
@@ -42,6 +48,10 @@
     --warn: #ffb020;
     --bad: #ff5c5c;
     --info: #5aa8ff;
+    --warn-text: #ffc24d;
+    --good-text: #3ccf7e;
+    --surface-3: #2e343f;
+    --bar-bg: color-mix(in srgb, var(--bg) 80%, transparent);
     --shadow: none;
     color-scheme: dark;
   }
@@ -53,8 +63,8 @@
   --surface-2: #20242c;
   --border: #2b3039;
   --text: #eceef2;
-  --text-2: #a4abb8;
-  --text-3: #6f7685;
+  --text-2: #b4bac5;
+  --text-3: #8b93a3;
   --accent: #ffb020;
   --accent-strong: #ffc53d;
   --accent-bg: rgba(255, 176, 32, 0.14);
@@ -62,6 +72,10 @@
   --warn: #ffb020;
   --bad: #ff5c5c;
   --info: #5aa8ff;
+  --warn-text: #ffc24d;
+  --good-text: #3ccf7e;
+  --surface-3: #2e343f;
+  --bar-bg: color-mix(in srgb, var(--bg) 80%, transparent);
   --shadow: none;
   color-scheme: dark;
 }
@@ -158,6 +172,46 @@ h3 {
   border-color: var(--accent-strong);
 }
 
+/* A disabled primary reads as unavailable, not as a faded accent. */
+.btn.primary:disabled {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-3);
+  opacity: 1;
+}
+
+/* ...except while it shows progress (spinner + "Measuring…"). */
+.btn.primary.busy:disabled {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1b1300;
+  opacity: 0.85;
+}
+
+/* Inverse "ink" button: Stop, so it never looks like Start. */
+.btn.ink {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.btn.ink:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 86%, var(--bg));
+  border-color: color-mix(in srgb, var(--text) 86%, var(--bg));
+}
+
+/* A secondary action shown as text (e.g. "Not listed? Show all devices"). */
+.btn.text {
+  border-color: transparent;
+  background: none;
+  color: var(--info);
+  padding: 0 6px;
+}
+
+.btn.text:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
 .btn.danger {
   color: var(--bad);
 }
@@ -172,8 +226,8 @@ h3 {
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   border: none;
   background: none;
@@ -203,8 +257,75 @@ select {
   outline-offset: 2px;
 }
 
+a {
+  color: var(--info);
+  text-underline-offset: 2px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 1px 5px;
+  overflow-wrap: anywhere;
+}
+
 .muted {
   color: var(--text-3);
+}
+
+/* The app's '---' / '--' / default '0.0' values: shown, but read as "no data". */
+.placeholder {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* Section title + trailing badge/chevron, used by the "Extra" disclosures. */
+.disclosure {
+  width: 100%;
+  min-height: 44px;
+  margin: -10px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.disclosure .card-title {
+  margin: 0;
+}
+
+.disclosure .chev {
+  margin-left: auto;
+  flex: none;
+  color: var(--text-2);
+  transition: transform 0.2s;
+}
+
+.disclosure[aria-expanded='true'] .chev {
+  transform: rotate(180deg);
+}
+
+.badge-extra {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.badge-extra + .chev {
+  margin-left: 0;
 }
 
 .sr-only {
@@ -219,6 +340,16 @@ select {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
   }
 }
 
@@ -262,7 +393,9 @@ select {
   }
 }
 
-/* Chart tokens (dataviz reference palette: series slot 1, fixed status steps) */
+/* Chart tokens (dataviz reference palette: series slot 1, fixed status steps).
+   Risk-zone washes use the fixed status steps; only their strength is chosen
+   per mode (validated: adjacent zones stay >= 10 OKLab ΔE apart in dark). */
 :root {
   --series-1: #2a78d6;
   --series-1-wash: rgba(42, 120, 214, 0.1);
@@ -271,6 +404,9 @@ select {
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --status-critical: #d03b3b;
+  --zone-good: color-mix(in srgb, var(--status-good) 14%, transparent);
+  --zone-warning: color-mix(in srgb, var(--status-warning) 20%, transparent);
+  --zone-critical: color-mix(in srgb, var(--status-critical) 14%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -279,6 +415,8 @@ select {
     --series-1-wash: rgba(57, 135, 229, 0.14);
     --grid: #262a32;
     --axis: #3a404b;
+    --zone-good: color-mix(in srgb, var(--status-good) 10%, transparent);
+    --zone-critical: color-mix(in srgb, var(--status-critical) 10%, transparent);
   }
 }
 
@@ -287,6 +425,26 @@ select {
   --series-1-wash: rgba(57, 135, 229, 0.14);
   --grid: #262a32;
   --axis: #3a404b;
+  --zone-good: color-mix(in srgb, var(--status-good) 10%, transparent);
+  --zone-critical: color-mix(in srgb, var(--status-critical) 10%, transparent);
+}
+
+@media print {
+  :root,
+  :root[data-theme='dark'],
+  :root:not([data-theme='light']) {
+    --zone-good: color-mix(in srgb, var(--status-good) 14%, transparent);
+    --zone-critical: color-mix(in srgb, var(--status-critical) 14%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+  .disclosure .chev {
+    transition: none;
+  }
 }
 
 .chart {

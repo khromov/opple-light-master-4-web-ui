@@ -79,13 +79,13 @@
     stroke: none;
   }
   .zone.good {
-    fill: color-mix(in srgb, var(--status-good) 14%, transparent);
+    fill: var(--zone-good);
   }
   .zone.warning {
-    fill: color-mix(in srgb, var(--status-warning) 20%, transparent);
+    fill: var(--zone-warning);
   }
   .zone.critical {
-    fill: color-mix(in srgb, var(--status-critical) 14%, transparent);
+    fill: var(--zone-critical);
   }
   .edge {
     fill: none;

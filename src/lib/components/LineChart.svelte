@@ -11,6 +11,7 @@
     marker = null,
     ariaLabel,
     height = 200,
+    emptyText = 'No data yet',
   }: {
     xs: number[];
     ys: number[];
@@ -21,7 +22,11 @@
     marker?: number | null;
     ariaLabel: string;
     height?: number;
+    /** Shown instead of meaningless axes when there is nothing to plot. */
+    emptyText?: string;
   } = $props();
+
+  const empty = $derived(!ys.length);
 
   let cw = $state(0);
   const W = $derived(Math.max(260, cw || 360));
@@ -58,16 +63,31 @@
 </script>
 
 <div class="chart" bind:clientWidth={cw}>
-  <svg bind:this={svg} viewBox="0 0 {W} {H}" role="img" aria-label={ariaLabel} onpointermove={onMove} onpointerleave={() => (hover = null)}>
-    {#each yTicks as t (t)}
-      <line class={t === 0 ? 'axisline' : 'gridline'} x1={M.l} x2={W - M.r} y1={sy(t)} y2={sy(t)} />
-      <text x={M.l - 6} y={sy(t) + 4} text-anchor="end">{fmtY(t)}</text>
-    {/each}
-    {#each xTicks as t (t)}
-      <text x={sx(t)} y={H - M.b + 15} text-anchor="middle">{fmtX(t)}</text>
-    {/each}
-    <text x={W - M.r} y={H - 2} text-anchor="end">{xLabel}</text>
-    <text x={M.l + 4} y={M.t + 10}>{yLabel}</text>
+  <svg
+    bind:this={svg}
+    viewBox="0 0 {W} {H}"
+    role="img"
+    aria-label={empty ? `${ariaLabel}: ${emptyText}` : ariaLabel}
+    onpointermove={onMove}
+    onpointerleave={() => (hover = null)}
+  >
+    {#if empty}
+      {#each [0.25, 0.5, 0.75] as f (f)}
+        <line class="gridline" x1={M.l} x2={W - M.r} y1={M.t + (H - M.t - M.b) * f} y2={M.t + (H - M.t - M.b) * f} />
+      {/each}
+      <line class="axisline" x1={M.l} x2={W - M.r} y1={H - M.b} y2={H - M.b} />
+      <text class="empty" x={(M.l + W - M.r) / 2} y={(M.t + H - M.b) / 2 + 4} text-anchor="middle">{emptyText}</text>
+    {:else}
+      {#each yTicks as t (t)}
+        <line class={t === 0 ? 'axisline' : 'gridline'} x1={M.l} x2={W - M.r} y1={sy(t)} y2={sy(t)} />
+        <text x={M.l - 6} y={sy(t) + 4} text-anchor="end">{fmtY(t)}</text>
+      {/each}
+      {#each xTicks as t (t)}
+        <text x={sx(t)} y={H - M.b + 15} text-anchor="middle">{fmtX(t)}</text>
+      {/each}
+      <text x={W - M.r} y={H - 2} text-anchor="end">{xLabel}</text>
+      <text x={M.l + 4} y={M.t + 10}>{yLabel}</text>
+    {/if}
     <path d={area} class="area" />
     <path d={line} class="line" />
     {#if marker !== null && marker >= 0 && marker < xs.length}
@@ -100,5 +120,13 @@
     fill: var(--series-1);
     stroke: var(--surface);
     stroke-width: 2;
+  }
+  .chart text.empty {
+    font-size: 13px;
+    font-weight: 600;
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 6px;
+    stroke-linejoin: round;
   }
 </style>

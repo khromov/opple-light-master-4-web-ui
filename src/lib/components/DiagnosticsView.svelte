@@ -25,7 +25,8 @@
 <section class="card">
   <h3 class="card-title">Connection</h3>
   <p class="state">
-    State: <strong>{app.state}</strong>{app.message ? ` — ${app.message}` : ''}
+    <i class="dot" class:on={app.connected} class:busy={app.busy} aria-hidden="true"></i>
+    <span>State: <strong>{app.state}</strong>{app.message ? ` — ${app.message}` : ''}</span>
   </p>
   {#if app.reading?.kSensor}
     <p class="muted small">Calibration (kSensor): {app.reading.kSensor.map((k) => k.toFixed(4)).join(', ')}</p>
@@ -61,7 +62,24 @@
     gap: 10px;
   }
   .state {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     margin: 0 0 6px;
+  }
+  .dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-3);
+    transform: translateY(-1px);
+  }
+  .dot.on {
+    background: var(--good);
+  }
+  .dot.busy {
+    background: var(--accent);
   }
   .small {
     font-size: 0.82rem;
@@ -85,10 +103,19 @@
     border-radius: 10px;
     padding: 10px;
     white-space: pre-wrap;
-    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+  /* One entry per block with a hanging indent under the 12-character timestamp. */
+  .log span {
+    display: block;
+    padding-left: 13ch;
+    text-indent: -13ch;
+  }
+  .log span + span {
+    margin-top: 2px;
   }
   .warn {
-    color: var(--warn);
+    color: var(--warn-text);
   }
   .error {
     color: var(--bad);

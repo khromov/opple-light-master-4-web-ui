@@ -1,7 +1,7 @@
 <script lang="ts">
   import { linear } from '../charts/scale';
 
-  let { values, labels }: { values: number[]; labels: string[] } = $props();
+  let { values, labels, empty = false }: { values: number[]; labels: string[]; /** no valid reading: the table's default 0.0 reads as a placeholder */ empty?: boolean } = $props();
 
   let cw = $state(0);
   const W = $derived(Math.max(260, cw || 360));
@@ -14,6 +14,8 @@
   const ticks = $derived(lo < 0 ? [-100, -50, 0, 50, 100] : [0, 25, 50, 75, 100]);
   const band = $derived((W - M.l - M.r) / n);
   const bw = $derived(Math.min(24, band * 0.62));
+  // On narrow charts "R10R11…" collide: label bars 1–14 (the card title says R1–R14; tooltips keep "R10").
+  const short = $derived(band < 30);
   let hover = $state<number | null>(null);
 
   /** Column path with a 4px rounded data end and a square baseline. */
@@ -35,7 +37,7 @@
   {#each labels as text, i (i)}
     <div class="cell" class:r9={i === 8} role="listitem">
       <span class="k">R{i + 1}</span>
-      <span class="v">{text}</span>
+      <span class="v" class:placeholder={empty}>{text}</span>
     </div>
   {/each}
 </div>
@@ -48,7 +50,7 @@
     {/each}
     {#each values as v, i (i)}
       <path d={column(i, v)} class="bar" class:dim={hover !== null && hover !== i} />
-      <text x={M.l + band * i + band / 2} y={H - 6} text-anchor="middle">R{i + 1}</text>
+      <text x={M.l + band * i + band / 2} y={H - 6} text-anchor="middle">{short ? i + 1 : `R${i + 1}`}</text>
       <rect
         x={M.l + band * i}
         y={M.t}
@@ -69,23 +71,25 @@
 </div>
 
 <style>
+  /* One tinted strip instead of 14 boxes; R9 keeps an outline. */
   .rtable {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 6px 4px;
     margin-bottom: 14px;
   }
   .cell {
-    background: var(--surface-2);
     border-radius: 8px;
-    padding: 6px 2px;
+    padding: 5px 0;
     text-align: center;
     display: flex;
     flex-direction: column;
     gap: 1px;
   }
   .cell.r9 {
-    box-shadow: inset 0 0 0 1px var(--border);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text-3) 60%, transparent);
   }
   .k {
     font-size: 0.72rem;
@@ -97,6 +101,9 @@
     font-weight: 600;
     font-size: 0.9rem;
   }
+  .v.placeholder {
+    font-weight: 500;
+  }
   .bar {
     fill: var(--series-1);
     transition: opacity 0.15s;
@@ -104,9 +111,10 @@
   .bar.dim {
     opacity: 0.45;
   }
-  @media (max-width: 380px) {
+  @media (max-width: 420px) {
     .v {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
+      letter-spacing: -0.01em;
     }
   }
 </style>
