@@ -9,6 +9,10 @@
   --accent: #d98a00;
   --accent-strong: #b87400;
   --accent-bg: rgba(217, 138, 0, 0.12);
+  /* Filled buttons: a bright amber so dark text stays crisp (9.7:1; hover 8.6:1). */
+  --btn-primary: #ffb020;
+  --btn-primary-hover: #f5a300;
+  --btn-primary-text: #1b1300;
   --good: #1a9e55;
   --warn: #d98a00;
   --bad: #d63a3a;
@@ -44,6 +48,8 @@
     --accent: #ffb020;
     --accent-strong: #ffc53d;
     --accent-bg: rgba(255, 176, 32, 0.14);
+    --btn-primary: #ffb020;
+    --btn-primary-hover: #ffc53d;
     --good: #3ccf7e;
     --warn: #ffb020;
     --bad: #ff5c5c;
@@ -68,6 +74,8 @@
   --accent: #ffb020;
   --accent-strong: #ffc53d;
   --accent-bg: rgba(255, 176, 32, 0.14);
+  --btn-primary: #ffb020;
+  --btn-primary-hover: #ffc53d;
   --good: #3ccf7e;
   --warn: #ffb020;
   --bad: #ff5c5c;
@@ -162,14 +170,14 @@ h3 {
 }
 
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1b1300;
+  background: var(--btn-primary);
+  border-color: var(--btn-primary);
+  color: var(--btn-primary-text);
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
 }
 
 /* A disabled primary reads as unavailable, not as a faded accent. */
@@ -182,9 +190,9 @@ h3 {
 
 /* ...except while it shows progress (spinner + "Measuring…"). */
 .btn.primary.busy:disabled {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1b1300;
+  background: var(--btn-primary);
+  border-color: var(--btn-primary);
+  color: var(--btn-primary-text);
   opacity: 0.85;
 }
 
