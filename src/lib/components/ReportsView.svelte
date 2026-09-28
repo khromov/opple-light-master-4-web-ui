@@ -9,7 +9,6 @@
   import Play from '@lucide/svelte/icons/play';
   import X from '@lucide/svelte/icons/x';
   import { app } from '../state.svelte';
-  import { router } from '../router.svelte';
   import { deleteReport, download, importReports, listReports, reportsToCsv, reportsToJson, shareLink, type Report } from '../reports';
   import { dayKey, formatPhotometry, formatTime, RISK_LABEL } from '../format';
   import Modal from './Modal.svelte';
@@ -18,7 +17,12 @@
   let loading = $state(true);
   let day = $state('');
   let editing = $state(false);
-  let selected = $state<Set<string>>(new Set());
+  // Never act on reports the filter hides: a writable derived that starts empty
+  // again whenever the day filter changes (toggling reassigns it).
+  let selected = $derived.by(() => {
+    void day;
+    return new Set<string>();
+  });
   let confirmOpen = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
 
@@ -35,11 +39,6 @@
   void load();
 
   const visible = $derived(day ? reports.filter((r) => dayKey(r.createdAt) === day) : reports);
-  // Never act on reports the filter hides.
-  $effect(() => {
-    void day;
-    selected = new Set();
-  });
   /** Row line 1: the key values. */
   function values(r: Report): string {
     const v = formatPhotometry(r.reading);

@@ -14,13 +14,14 @@
 
   let { tab }: { tab: 'photometry' | 'flicker' } = $props();
 
-  let current = $state<'photometry' | 'flicker'>('photometry');
-  $effect.pre(() => {
-    current = tab;
-  });
-  $effect(() => {
-    if (current !== tab) router.go(current === 'flicker' ? 'flicker' : '');
-  });
+  // The route is the source of truth. Picking a tab shows it at once (a writable
+  // derived, overridden here) and navigates; the route then catches up.
+  let current = $derived(tab);
+  function selectTab(next: 'photometry' | 'flicker') {
+    if (next === current) return;
+    current = next;
+    router.go(next === 'flicker' ? 'flicker' : '');
+  }
   // As the app: measuring stops when the tab changes or the screen goes away.
   $effect(() => {
     if (tab !== 'photometry') app.stopLive();
@@ -65,7 +66,7 @@
 
 <div class="tabs">
   <Segmented
-    bind:value={current}
+    bind:value={() => current, selectTab}
     label="Measurement"
     panel="measure-panel"
     options={[

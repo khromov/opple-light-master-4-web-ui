@@ -6,12 +6,15 @@
 
   let step = $state<1 | 2>(1);
   let working = $state(false);
+  // Tips stay out of the way until a connection attempt here fails.
+  let tipsOpen = $state(false);
 
   async function connect(showAll = false) {
     working = true;
     const ok = await app.connect(showAll);
     working = false;
     if (ok) step = 2;
+    else if (app.error) tipsOpen = true; // a dismissed chooser leaves no error
   }
 
   async function retry() {
@@ -21,14 +24,6 @@
   }
 
   const unsupported = $derived(!app.support.ok);
-
-  // Tips stay out of the way until something goes wrong here. An error left over
-  // from another page (cleared on navigation) doesn't count.
-  let tipsOpen = $state(false);
-  const errorOnArrival = app.error;
-  $effect(() => {
-    if (app.error && app.error !== errorOnArrival) tipsOpen = true;
-  });
 </script>
 
 <section class="card">

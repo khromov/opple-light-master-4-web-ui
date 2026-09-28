@@ -23,17 +23,23 @@
 
   $effect(() => {
     const target = { id, code };
+    // A newer id/code (or leaving the page) makes this load stale: drop its result.
+    let stale = false;
     report = null;
     failed = null;
     (async () => {
       try {
         const r = target.code ? await reportFromShare(target.code) : target.id ? await getReport(target.id) : null;
+        if (stale) return;
         if (!r) failed = 'This report no longer exists.';
         else report = r;
       } catch (err) {
-        failed = `This link could not be opened (${(err as Error).message}).`;
+        if (!stale) failed = `This link could not be opened (${(err as Error).message}).`;
       }
     })();
+    return () => {
+      stale = true;
+    };
   });
 
   async function share() {

@@ -1,5 +1,23 @@
+<script module lang="ts">
+  import { paintGamut } from '../science/cie-diagram';
+
+  // The gamut is painted once per page load at full extent and shared by every
+  // diagram; the zoomed view crops it via the image's position.
+  let gamut = '';
+  function gamutDataUrl(): string {
+    if (!gamut) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 360;
+      paintGamut(canvas, 0.8, 0.9, 0.18);
+      gamut = canvas.toDataURL();
+    }
+    return gamut;
+  }
+</script>
+
 <script lang="ts">
-  import { PLANCKIAN_LOCUS, PLANCK_TICKS, SPECTRAL_LOCUS, paintGamut, type XY } from '../science/cie-diagram';
+  import { PLANCKIAN_LOCUS, PLANCK_TICKS, SPECTRAL_LOCUS, type XY } from '../science/cie-diagram';
   import { linear, niceTicks } from '../charts/scale';
 
   let { x, y, cct, zoom = $bindable(false) }: { x: number | null; y: number | null; cct: string; /** zoomed to the white region (toggle lives in the card title) */ zoom?: boolean } = $props();
@@ -18,14 +36,7 @@
   const path = (pts: XY[], close = false) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${sx(a).toFixed(1)},${sy(b).toFixed(1)}`).join('') + (close ? 'Z' : '');
   const labelled = [460, 480, 500, 520, 540, 560, 580, 600, 620];
 
-  // The gamut is painted once at full extent; the zoomed view crops it via the image's position.
-  let canvas: HTMLCanvasElement | undefined = $state();
-  let gamutUrl = $state('');
-  $effect(() => {
-    if (!canvas || gamutUrl) return;
-    paintGamut(canvas, 0.8, 0.9, 0.18);
-    gamutUrl = canvas.toDataURL();
-  });
+  const gamutUrl = gamutDataUrl();
 
   const hasPoint = $derived(x !== null && y !== null && x > 0 && y > 0);
   let hover = $state(false);
@@ -34,7 +45,6 @@
 
 <div bind:clientWidth={cw}>
 <div class="chart" style:max-width="{W}px" style:margin="0 auto">
-  <canvas bind:this={canvas} width="320" height="360" hidden></canvas>
   <svg viewBox="0 0 {W} {H}" role="img" aria-label="CIE 1931 chromaticity diagram{hasPoint ? `, measured x ${x!.toFixed(4)}, y ${y!.toFixed(4)}` : ''}">
     <defs>
       <clipPath id={clipId}><rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} /></clipPath>

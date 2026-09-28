@@ -9,7 +9,7 @@
     actions,
     variant = 'dialog',
   }: {
-    open: boolean;
+    open?: boolean;
     title: string;
     children: Snippet;
     actions?: Snippet;

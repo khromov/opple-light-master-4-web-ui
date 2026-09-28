@@ -1,17 +1,12 @@
 <script lang="ts">
   import { app, type Theme } from '../state.svelte';
   import Segmented from './Segmented.svelte';
-
-  let theme = $state<Theme>(app.theme);
-  $effect(() => {
-    if (theme !== app.theme) app.setTheme(theme);
-  });
 </script>
 
 <section class="card">
   <h3 class="card-title">Appearance</h3>
   <Segmented
-    bind:value={theme}
+    bind:value={() => app.theme, (t: Theme) => app.setTheme(t)}
     label="Theme"
     options={[
       { value: 'auto', label: 'System' },
