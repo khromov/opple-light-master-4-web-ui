@@ -44,6 +44,12 @@
       </div>
     {/each}
   </dl>
+  {#if flicker?.stale}
+    <div class="quality saturated" role="note">
+      <TriangleAlert size={16} />
+      <span>The meter sent its previous waveform again instead of a new capture, so these values may be out of date. Measure again.</span>
+    </div>
+  {/if}
   {#if flicker?.refineError}
     <div class="quality weak" role="note">
       <TriangleAlert size={16} />
@@ -56,12 +62,12 @@
       <span>
         {#if flicker.quality.status === 'saturated'}
           The flicker sensor is overloaded ({flicker.lux !== null ? `${Math.round(flicker.lux)} lx` : 'too bright'}), so these values are not meaningful. Move the
-          meter further from the light (below about 5 000 lx) and measure again.
+          meter further from the light (to roughly 300–3 000 lx) and measure again.
         {:else if flicker.quality.status === 'too-dim'}
           Too little light reaches the flicker sensor for a result. Move the meter closer to the light.
         {:else}
           Weak signal ({flicker.quality.level.toFixed(0)} counts above the sensor's dark level): modulation of a few percent and the frequency can be sensor
-          noise. More light (roughly 500–5 000 lx) gives a more reliable reading.
+          noise. More light (roughly 300–3 000 lx) gives a more reliable reading.
         {/if}
       </span>
     </div>

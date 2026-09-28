@@ -119,6 +119,38 @@ describe('LightMaster session (simulated LM4)', () => {
     expect(meter.isPolling).toBe(false);
   });
 
+  it('keeps an idle link alive without emitting readings, like the Android app', async () => {
+    const fake = installFakeBluetooth();
+    meter = new LightMaster();
+    let readings = 0;
+    await meter.connect();
+    meter.addEventListener('reading', () => readings++);
+    const before = fake.writes;
+    await sleep(2100); // keep-alive every 900 ms
+    expect(fake.writes - before).toBeGreaterThanOrEqual(2);
+    expect(readings).toBe(0);
+    expect(meter.isPolling).toBe(false);
+  });
+
+  it('retries when the meter resends the previous flicker waveform', async () => {
+    installFakeBluetooth({ staleCapture: (n) => n === 1 });
+    meter = new LightMaster();
+    await meter.connect();
+    const first = await meter.captureFlicker(25);
+    const second = await meter.captureFlicker(25); // meter repeats, we capture again
+    expect(second.stale).toBeFalsy();
+    expect(second.samples).not.toEqual(first.samples);
+  });
+
+  it('flags a waveform that stays stale', async () => {
+    installFakeBluetooth({ staleCapture: (n) => n >= 1 });
+    meter = new LightMaster();
+    await meter.connect();
+    await meter.captureFlicker(25);
+    const again = await meter.captureFlicker(25);
+    expect(again.stale).toBe(true);
+  });
+
   it('a failed connect leaves nothing running on the meter', async () => {
     const fake = installFakeBluetooth({ dropAfter: (n) => (n === 1 ? 5 : null) });
     const first = new LightMaster();

@@ -54,6 +54,12 @@ const CONNECT_TIMEOUT_MS = 15000;
 const COMMAND_TIMEOUT_MS = 3000;
 const FLICKER_TIMEOUT_MS = 15000; // the app's freqTimer
 const MAX_CONSECUTIVE_TIMEOUTS = 3;
+/**
+ * While connected but not measuring, the Android app keeps polling every
+ * 900 ms. The meter drops an idle link: on hardware, one went after ~46 s
+ * without traffic, while 15-19 s gaps were fine.
+ */
+const KEEPALIVE_MS = 900;
 const RECONNECT_ATTEMPTS = 3;
 
 export type MeterState =
@@ -199,6 +205,7 @@ export class LightMaster extends EventTarget {
   /** The poll loop is running; each start gets a new generation so a stale loop exits. */
   private loopGen = 0;
   private loopActive = false;
+  private loopMode: 'live' | 'keepalive' = 'live';
   private disconnectAnnounced = false;
   private flickerTimeoutMs: number;
   private consecutiveTimeouts = 0;
@@ -222,7 +229,7 @@ export class LightMaster extends EventTarget {
   }
 
   get isPolling(): boolean {
-    return this.loopActive;
+    return this.loopActive && this.loopMode === 'live';
   }
 
   private emit(type: string, detail: unknown) {
@@ -267,6 +274,7 @@ export class LightMaster extends EventTarget {
       throw err;
     }
     this.established = true;
+    this.resumeLoop();
     return this.info();
   }
 
@@ -436,7 +444,7 @@ export class LightMaster extends EventTarget {
       try {
         return await fn();
       } finally {
-        if (this.wantPolling && this.connected) this.startLoop();
+        this.resumeLoop();
       }
     };
     const next = this.busy.then(run, run);
@@ -445,7 +453,36 @@ export class LightMaster extends EventTarget {
   }
 
   /** One flicker capture at a fixed sampling period: REQ_FREQ, then four RES_FREQ pages. */
+  /** Samples of the previous capture, to spot the meter resending a stale buffer. */
+  private lastFlickerSamples: number[] | null = null;
+
+  /**
+   * One flicker capture at a fixed sampling period: REQ_FREQ, then four
+   * RES_FREQ pages. On hardware the meter occasionally answers with the
+   * previous capture's waveform (sample-for-sample identical, with a fresh
+   * embedded measurement); that is retried once and otherwise flagged.
+   */
   async captureFlicker(period: FlickerPeriod): Promise<FlickerResult> {
+    let result = await this.captureOnce(period);
+    if (this.isStale(result.samples)) {
+      this.log(`flicker capture ${period}: the meter resent the previous waveform; capturing again`, 'warn');
+      await sleep(300);
+      result = await this.captureOnce(period);
+      if (this.isStale(result.samples)) {
+        this.log(`flicker capture ${period}: still the previous waveform`, 'warn');
+        result = { ...result, stale: true };
+      }
+    }
+    this.lastFlickerSamples = result.samples;
+    return result;
+  }
+
+  private isStale(samples: number[]): boolean {
+    const prev = this.lastFlickerSamples;
+    return !!prev && prev.length === samples.length && prev.every((v, i) => v === samples[i]);
+  }
+
+  private async captureOnce(period: FlickerPeriod): Promise<FlickerResult> {
     const samples = new Array<number>(FLICKER_SAMPLES).fill(0);
     const got = new Set<number>();
     let dataType = 0;
@@ -533,18 +570,29 @@ export class LightMaster extends EventTarget {
   startPolling(intervalMs = 500) {
     this.pollInterval = intervalMs;
     this.wantPolling = true;
-    this.startLoop();
+    this.resumeLoop();
   }
 
+  /** Stop measuring; the link is kept alive with quiet polls, as the Android app does. */
   stopPolling() {
     this.wantPolling = false;
-    this.haltLoop();
+    this.resumeLoop();
   }
 
-  private startLoop() {
+  private resumeLoop() {
+    if (!this.connected || this.manualDisconnect) {
+      this.haltLoop();
+      return;
+    }
+    this.startLoop(this.wantPolling ? 'live' : 'keepalive');
+  }
+
+  private startLoop(mode: 'live' | 'keepalive') {
     this.haltLoop();
     const gen = ++this.loopGen;
     this.loopActive = true;
+    this.loopMode = mode;
+    const interval = mode === 'live' ? this.pollInterval : KEEPALIVE_MS;
     const live = () => gen === this.loopGen && this.loopActive && this.connected;
     const tick = async () => {
       if (!live()) return;
@@ -553,7 +601,7 @@ export class LightMaster extends EventTarget {
         try {
           const reading = await this.measure(COMMAND_TIMEOUT_MS);
           this.consecutiveTimeouts = 0;
-          if (live()) this.emit('reading', reading);
+          if (live() && mode === 'live') this.emit('reading', reading);
         } catch (err) {
           if (!live()) return;
           this.consecutiveTimeouts += 1;
@@ -566,9 +614,9 @@ export class LightMaster extends EventTarget {
           }
         }
       }
-      if (live()) this.pollTimer = setTimeout(tick, Math.max(20, this.pollInterval - (performance.now() - started)));
+      if (live()) this.pollTimer = setTimeout(tick, Math.max(20, interval - (performance.now() - started)));
     };
-    this.pollTimer = setTimeout(tick, 0);
+    this.pollTimer = setTimeout(tick, mode === 'live' ? 0 : interval);
   }
 
   private haltLoop() {
@@ -659,7 +707,7 @@ export class LightMaster extends EventTarget {
             this.cancelPendingConnect();
             break;
           }
-          if (this.wantPolling) this.startLoop();
+          this.resumeLoop();
           this.reconnecting = false;
           return;
         } catch (err) {

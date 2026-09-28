@@ -166,10 +166,11 @@ export interface SignalQuality {
 
 /**
  * How usable a capture is. Measured on a real LM4: the flicker photodiode
- * sits only ~55 counts above its dark level at ~120 lx, and in bright light
- * (≳ 8 000 lx) it overloads and reads back at the dark level, which the
- * app's maths turns into a meaningless 99.5 % modulation. The app has an
- * "increase the test distance" message but never raises it for the LM4.
+ * sits only ~55 counts above its dark level at ~120 lx and peaks around a
+ * few thousand lux; brighter than ~4 000 lx its output falls back towards
+ * the dark level, which the app's maths turns into large, meaningless
+ * modulation. The app has an "increase the test distance" message but never
+ * raises it for the LM4.
  */
 export function signalQuality(samples: number[], dataType: number, lux: number | null): SignalQuality {
   const dc = dcOffset(dataType);
@@ -177,8 +178,11 @@ export function signalQuality(samples: number[], dataType: number, lux: number |
   const level = mean - dc;
   const clipped = samples.some((v) => v >= 4090);
   if (clipped) return { status: 'saturated', level };
-  if (level < 8) return { status: lux !== null && lux > 1000 ? 'saturated' : 'too-dim', level };
-  if (level < 150) return { status: 'weak', level };
+  // Measured on hardware: ~56 counts at 118 lx, ~190 at 2 050 lx, then falling again
+  // (64 at 7 500 lx, ~0 above 11 000 lx) as the sensor overloads.
+  const bright = lux !== null && lux > 4000;
+  if (level < 8) return { status: bright || (lux !== null && lux > 1000) ? 'saturated' : 'too-dim', level };
+  if (level < 150) return { status: bright ? 'saturated' : 'weak', level };
   return { status: 'ok', level };
 }
 
@@ -202,6 +206,8 @@ export interface FlickerResult {
   isDC: boolean;
   /** Set when the app's frequency-refining second capture failed (the app shows an error instead). */
   refineError?: string;
+  /** The meter sent the previous capture's waveform again (seen on hardware); values are not a new measurement. */
+  stale?: boolean;
   risk: FlickerRisk;
   /** Periods captured to produce this result (the app refines frequency with a second capture). */
   captures: FlickerPeriod[];

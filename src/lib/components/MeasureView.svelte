@@ -82,7 +82,7 @@
 
 <div class="actions no-print">
   {#if app.saving}
-    <button class="btn primary" disabled><span class="spinner"></span> Capturing flicker for the report…</button>
+    <button class="btn primary wide" disabled><span class="spinner"></span> Measuring flicker…</button>
   {:else if current === 'photometry'}
     {#if app.live}
       <button class="btn primary wide" onclick={() => app.stopLive()}><Square size={16} /> Stop</button>
@@ -138,6 +138,10 @@
   .actions .btn {
     flex: 1;
     max-width: 240px;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
   }
   .hint {
     margin: 6px 0 0;

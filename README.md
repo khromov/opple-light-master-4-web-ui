@@ -11,7 +11,7 @@ The numbers come from the official app's own algorithms and coefficients, extrac
 3. Press **Start** and pick **SigMesh** (the Light Master 4's Bluetooth name).
 4. **Photometry** measures continuously until Stop; **Save as Report** also captures flicker, as the app does. **Flicker** takes one measurement per Start.
 
-Flicker needs a moderate light level: roughly 500–5,000 lx. Below ~100 lx the flicker sensor is close to its noise floor, and above ~8,000 lx it overloads. The UI warns in both cases.
+Flicker needs a moderate light level: roughly 300–3,000 lx. Below ~100 lx the meter's flicker sensor is close to its noise floor, and above ~4,000 lx it overloads (its output falls back towards the dark level). The UI warns in both cases.
 
 `?demo` runs the whole UI against a simulated meter.
 

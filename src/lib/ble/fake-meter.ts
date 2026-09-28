@@ -32,6 +32,8 @@ export interface FakeOptions {
   onWrite?: (frame: Uint8Array) => void;
   /** Drop this notification index (0-based, counted across the session) to simulate loss. */
   loseNotification?: (n: number) => boolean;
+  /** Resend the previous flicker waveform for capture n (0-based), as real meters occasionally do. */
+  staleCapture?: (n: number) => boolean;
 }
 
 const hexBytes = (s: string) => Uint8Array.from(s.match(/../g)!.map((b) => parseInt(b, 16)));
@@ -71,12 +73,12 @@ function packSamples(samples: number[]): number[] {
   return out;
 }
 
-function flickerPages(light: FakeLight, period: number, seq: number): Uint8Array[] {
+function flickerPages(light: FakeLight, period: number, seq: number, previous: number[] | null): { frames: Uint8Array[]; samples: number[] } {
   const us = FLICKER_MODES[period as keyof typeof FLICKER_MODES] ?? 26;
   const dataType = 1;
   const dc = 15.8720703125;
   const mean = 1400 * Math.min(1, light.level);
-  const samples = Array.from({ length: 1024 }, (_, i) => {
+  const samples = previous ?? Array.from({ length: 1024 }, (_, i) => {
     const t = (i * us) / 1e6;
     const ripple = light.flickerHz > 0 ? light.modulation * Math.sin(2 * Math.PI * light.flickerHz * t) : 0;
     return dc + mean * (1 + ripple) + (Math.random() * 2 - 1) * 2;
@@ -87,7 +89,7 @@ function flickerPages(light: FakeLight, period: number, seq: number): Uint8Array
     const body = [0x00, page, dataType, ...measurementBytes(light), ...packSamples(samples.slice(page * 260, page * 260 + n))];
     frames.push(...frame(OPCODE.RES_FREQ, seq, body));
   }
-  return frames;
+  return { frames, samples };
 }
 
 export interface FakeMeter {
@@ -103,7 +105,8 @@ export function installFakeBluetooth(opts: FakeOptions = {}): FakeMeter {
   const light: FakeLight = { level: 1, flickerHz: 100, modulation: 0.06, noise: 0.004, ...opts.light };
   const answerMs = opts.answerMs ?? 12;
   const dropAfter = opts.dropAfter ?? (() => null);
-  const state = { links: 0, writes: 0, notifications: 0 };
+  const state = { links: 0, writes: 0, notifications: 0, captures: 0 };
+  let lastWave: number[] | null = null;
   let up = false;
   let epoch = 0;
   let dropTimer: ReturnType<typeof setTimeout> | undefined;
@@ -137,7 +140,13 @@ export function installFakeBluetooth(opts: FakeOptions = {}): FakeMeter {
       let frames: Uint8Array[] = [];
       if (op === OPCODE.REQ_CAL) frames = frame(OPCODE.RES_CAL, seq, hexBytes(REAL_CAL));
       else if (op === OPCODE.REQ_MEAS) frames = frame(OPCODE.RES_MEAS, seq, [0x00, ...measurementBytes(light)]);
-      else if (op === OPCODE.REQ_FREQ) frames = flickerPages(light, (msg[12] << 8) | msg[13], seq);
+      else if (op === OPCODE.REQ_FREQ) {
+        const stale = !!lastWave && !!opts.staleCapture?.(state.captures);
+        const out = flickerPages(light, (msg[12] << 8) | msg[13], seq, stale ? lastWave : null);
+        state.captures++;
+        lastWave = out.samples;
+        frames = out.frames;
+      }
       const at = epoch;
       setTimeout(() => {
         for (const f of frames) {
