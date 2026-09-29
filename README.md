@@ -4,6 +4,23 @@ A web version of the Opple Light Master 4 screens from the OPPLE Smart app: phot
 
 The numbers come from the official app's own algorithms and coefficients, extracted from the decompiled iOS and Android apps and checked against real LM4 captures. See [OMISSIONS.md](OMISSIONS.md) for what differs from the app.
 
+**Open it:** https://khromov.github.io/opple-light-master-4-web-ui/ (or [try the demo](https://khromov.github.io/opple-light-master-4-web-ui/?demo) with a simulated meter, no hardware needed)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/photometry.webp" alt="Photometry: illuminance gauge with CCT, chromaticity coordinates, CRI (Ra), CS, EML and R9" width="200"></td>
+    <td><img src="docs/screenshots/colour-rendering.webp" alt="Colour rendering R1 to R14 table and bar chart, and the CIE 1931 chromaticity diagram" width="200"></td>
+    <td><img src="docs/screenshots/flicker.webp" alt="Flicker in dark mode: risk verdict, IEEE PAR1789 risk chart, flicker index, modulation depth, frequency and the raw waveform" width="200"></td>
+    <td><img src="docs/screenshots/reports.webp" alt="Report list with saved measurements, risk indicators and export options" width="200"></td>
+  </tr>
+  <tr>
+    <td align="center">Photometry</td>
+    <td align="center">Colour rendering</td>
+    <td align="center">Flicker (dark mode)</td>
+    <td align="center">Reports</td>
+  </tr>
+</table>
+
 ## Using it
 
 1. Use Chrome or Edge (desktop or Android). Safari and Firefox have no Web Bluetooth; on iPhone/iPad use a Web Bluetooth browser such as Bluefy.
