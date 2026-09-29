@@ -8,15 +8,27 @@ The numbers come from the official app's own algorithms and coefficients, extrac
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/photometry.webp" alt="Photometry: illuminance gauge with CCT, chromaticity coordinates, CRI (Ra), CS, EML and R9" width="200"></td>
-    <td><img src="docs/screenshots/colour-rendering.webp" alt="Colour rendering R1 to R14 table and bar chart, and the CIE 1931 chromaticity diagram" width="200"></td>
-    <td><img src="docs/screenshots/flicker.webp" alt="Flicker in dark mode: risk verdict, IEEE PAR1789 risk chart, flicker index, modulation depth, frequency and the raw waveform" width="200"></td>
-    <td><img src="docs/screenshots/reports.webp" alt="Report list with saved measurements, risk indicators and export options" width="200"></td>
+    <td><picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/photometry-dark.webp">
+      <img src="docs/screenshots/photometry-light.webp" alt="Photometry: illuminance gauge with CCT, chromaticity coordinates, CRI (Ra), CS, EML and R9" width="200">
+    </picture></td>
+    <td><picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/colour-rendering-dark.webp">
+      <img src="docs/screenshots/colour-rendering-light.webp" alt="Colour rendering R1 to R14 table and bar chart, and the CIE 1931 chromaticity diagram" width="200">
+    </picture></td>
+    <td><picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/flicker-dark.webp">
+      <img src="docs/screenshots/flicker-light.webp" alt="Flicker: risk verdict, IEEE PAR1789 risk chart, flicker index, modulation depth, frequency and the raw waveform" width="200">
+    </picture></td>
+    <td><picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/reports-dark.webp">
+      <img src="docs/screenshots/reports-light.webp" alt="Report list with saved measurements, risk indicators and export options" width="200">
+    </picture></td>
   </tr>
   <tr>
     <td align="center">Photometry</td>
     <td align="center">Colour rendering</td>
-    <td align="center">Flicker (dark mode)</td>
+    <td align="center">Flicker</td>
     <td align="center">Reports</td>
   </tr>
 </table>
